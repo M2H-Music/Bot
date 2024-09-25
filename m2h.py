@@ -14,11 +14,11 @@ from threading import Thread
 loop = asyncio.get_event_loop()
 
 # Token and Database Configurations
-TOKEN = '6844883823:AAExTfu3eBdEb2iqFdKUWFEttwaPXTI6PKQ'
-MONGO_URI = 'mongodb+srv://Bishal:Bishal@bishal.dffybpx.mongodb.net/?retryWrites=true&w=majority&appName=Bishal'
-FORWARD_CHANNEL_ID = -1002272999849
-CHANNEL_ID = -1002272999849
-error_channel_id = -1002272999849
+TOKEN = 'your-telegram-bot-token'
+MONGO_URI = 'your-mongo-uri'
+FORWARD_CHANNEL_ID = -1001970210072
+CHANNEL_ID = -1001970210072
+error_channel_id = -1001970210072
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -96,6 +96,15 @@ Here is an explanation of the available commands:
         bot.reply_to(message, "This bot is managed by M2H (@m2hgamerz). For any queries or concerns, feel free to reach out.", parse_mode='Markdown')
     else:
         bot.reply_to(message, "Sorry, the option you selected is not valid. Please use the menu to choose a valid action.", parse_mode='Markdown')
+
+# Function to start asyncio loop in a separate thread
+def start_asyncio_thread():
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(start_asyncio_loop())
+
+async def start_asyncio_loop():
+    while True:
+        await asyncio.sleep(REQUEST_INTERVAL)
 
 # Running the bot
 if __name__ == "__main__":
